@@ -1,4 +1,4 @@
-use static_files::{NpmBuild, resource_dir};
+use static_files::{NpmBuild};
 
 fn main() -> std::io::Result<()> {
     NpmBuild::new("../frontend")
