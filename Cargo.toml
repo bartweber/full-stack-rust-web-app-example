@@ -1,0 +1,12 @@
+[package]
+name = "balanced"
+version = "0.1.0"
+authors = ["Bart Weber"]
+edition = "2021"
+publish = false
+
+[workspace]
+members = [".", "api", "service", "entity", "migration"]
+
+[dependencies]
+actix-example-api = { path = "api" }
