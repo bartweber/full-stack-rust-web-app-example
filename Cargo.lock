@@ -432,6 +432,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "balanced"
+version = "0.1.0"
+dependencies = [
+ "actix-example-api",
+]
+
+[[package]]
 name = "base64"
 version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1909,13 +1916,6 @@ dependencies = [
  "tracing",
  "url",
  "uuid 1.4.0",
-]
-
-[[package]]
-name = "sea-orm-actix-4-beta-example"
-version = "0.1.0"
-dependencies = [
- "actix-example-api",
 ]
 
 [[package]]

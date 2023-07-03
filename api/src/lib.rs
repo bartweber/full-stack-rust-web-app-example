@@ -1,10 +1,9 @@
-use std::collections::HashMap;
 use actix_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
 };
 use actix_web::{
-    error, get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
+    get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
 };
 use actix_web_static_files::ResourceFiles;
 use std::str;
@@ -14,8 +13,6 @@ use listenfd::ListenFd;
 use migration::{Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
 use std::env;
-use actix_web::dev::ResourcePath;
-use static_files::Resource;
 
 const DEFAULT_POSTS_PER_PAGE: u64 = 5;
 
@@ -48,7 +45,7 @@ async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpRespons
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
 
-    let (posts, num_pages) = Query::find_posts_in_page(conn, page, posts_per_page)
+    let (posts, _num_pages) = Query::find_posts_in_page(conn, page, posts_per_page)
         .await
         .expect("Cannot find posts in page");
 
@@ -57,7 +54,7 @@ async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpRespons
 }
 
 #[get("/api/posts/new")]
-async fn new(data: web::Data<AppState>) -> Result<HttpResponse, Error> {
+async fn new(_data: web::Data<AppState>) -> Result<HttpResponse, Error> {
     let body = "new post";
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
@@ -127,7 +124,7 @@ async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRes
         .finish())
 }
 
-async fn not_found(data: web::Data<AppState>, request: HttpRequest) -> Result<HttpResponse, Error> {
+async fn _not_found(_data: web::Data<AppState>, _request: HttpRequest) -> Result<HttpResponse, Error> {
     let body = "404";
     Ok(HttpResponse::Ok().content_type("text/html").body(body))
 }
