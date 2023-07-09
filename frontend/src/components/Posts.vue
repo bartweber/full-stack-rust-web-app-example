@@ -23,19 +23,21 @@
       <v-btn
           :loading="isLoading"
           icon="mdi-refresh"
-          @click="fetchPosts"
+          @click="refresh"
       />
     </v-toolbar>
 
-    <v-data-table
+    <v-data-table-server
         :headers="headers"
-        :items="allPosts"
+        :items-length="totalPosts"
+        :items="posts"
         item-value="id"
         show-select
         select-strategy="page"
         v-model="selected"
+        :items-per-page="itemsPerPage"
+        @update:options="fetchPosts"
     >
-
       <template v-slot:item.actions="{ item }">
         <v-menu>
           <template v-slot:activator="{ props }">
@@ -60,7 +62,7 @@
           </v-list>
         </v-menu>
       </template>
-    </v-data-table>
+    </v-data-table-server>
 
     <router-view/>
 
@@ -68,22 +70,24 @@
 </template>
 
 <script setup>
-import {computed, onMounted} from 'vue'
+import {computed} from 'vue'
 import {useStore} from 'vuex'
+import { VDataTableServer } from 'vuetify/labs/VDataTable'
 
 const store = useStore()
 
 const isLoading = computed(() => store.getters['post/isLoading'])
-const allPosts = computed(() => store.getters['post/allPosts'])
+const posts = computed(() => store.getters['post/posts'])
+const totalPosts = computed(() => store.getters['post/totalPosts'])
+const itemsPerPage = computed(() => store.getters['post/itemsPerPage'])
 const selected = computed({
-      get() {
-        return store.getters['post/selected']
-      },
-      set(value) {
-        store.commit('post/setSelected', value)
-      },
-    },
-)
+  get() {
+    return store.getters['post/selected']
+  },
+  set(value) {
+    store.commit('post/setSelected', value)
+  },
+})
 
 const headers = [
   {title: 'Title', key: 'title'},
@@ -91,12 +95,14 @@ const headers = [
   {title: '', key: 'actions', sortable: false, width: '70px'},
 ]
 
-function fetchPosts() {
+function refresh() {
   store.dispatch('post/fetchPosts')
 }
 
-function updatePost(id) {
-  store.dispatch('post/updatePost', id)
+async function fetchPosts({page, itemsPerPage}) {
+  await store.commit('post/setPage', page)
+  await store.commit('post/setItemsPerPage', itemsPerPage)
+  await store.dispatch('post/fetchPosts')
 }
 
 function deletePost(id) {
@@ -107,9 +113,6 @@ function deleteSelected() {
   store.dispatch('post/deletePosts', selected.value)
 }
 
-onMounted(() => {
-  fetchPosts()
-})
 </script>
 
 <style>

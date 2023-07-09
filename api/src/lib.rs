@@ -12,7 +12,7 @@ use migration::{Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
 use std::env;
 
-const DEFAULT_POSTS_PER_PAGE: u64 = 99;
+const DEFAULT_POSTS_PER_PAGE: u64 = 10;
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
@@ -25,6 +25,12 @@ struct AppState {
 pub struct Params {
     page: Option<u64>,
     posts_per_page: Option<u64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PostsResponse {
+    posts: Vec<post::Model>,
+    total_posts: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,11 +56,16 @@ async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpRespons
     let page = params.page.unwrap_or(1);
     let posts_per_page = params.posts_per_page.unwrap_or(DEFAULT_POSTS_PER_PAGE);
 
-    let (posts, _num_pages) = Query::find_posts_in_page(conn, page, posts_per_page)
+    let (posts, total_posts) = Query::find_posts_in_page(conn, page, posts_per_page)
         .await
         .expect("Cannot find posts in page");
 
-    Ok(HttpResponse::Ok().json(posts))
+    let response = PostsResponse {
+        posts,
+        total_posts,
+    };
+
+    Ok(HttpResponse::Ok().json(response))
 }
 
 #[post("/api/posts/")]

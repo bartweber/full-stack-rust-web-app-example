@@ -4,7 +4,7 @@ import {mapGetters} from "vuex";
 export default {
   name: 'Dashboard',
   computed: {
-    ...mapGetters('post', ['postCount']),
+    ...mapGetters('post', ['totalPosts']),
   },
   mounted() {
     this.$store.dispatch('post/fetchPosts')
@@ -23,7 +23,7 @@ export default {
       </v-col>
       <v-col cols="auto">
         <div>
-          No. of posts: {{ postCount }}
+          No. of posts: {{ totalPosts }}
         </div>
       </v-col>
     </v-row>

@@ -18,9 +18,9 @@ impl Query {
         let paginator = Post::find()
             .order_by_asc(post::Column::Id)
             .paginate(db, posts_per_page);
-        let num_pages = paginator.num_pages().await?;
+        let num_items = paginator.num_items().await?;
 
         // Fetch paginated posts
-        paginator.fetch_page(page - 1).await.map(|p| (p, num_pages))
+        paginator.fetch_page(page - 1).await.map(|p| (p, num_items))
     }
 }
