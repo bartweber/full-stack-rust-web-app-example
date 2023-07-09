@@ -6,6 +6,9 @@ export default {
         posts: [],
         selected: [],
         loading: false,
+        page: 1,
+        totalPosts: 0,
+        itemsPerPage: 10
     },
     mutations: {
         setLoading(state, loading) {
@@ -16,14 +19,25 @@ export default {
         },
         setSelected(state, selected) {
             state.selected = selected
+        },
+        setPage(state, page) {
+            state.page = page
+        },
+        setTotalPosts(state, totalPosts) {
+            state.totalPosts = totalPosts
+        },
+        setItemsPerPage(state, itemsPerPage) {
+            state.itemsPerPage = itemsPerPage
         }
     },
     actions: {
-        async fetchPosts({commit}) {
+        async fetchPosts({commit, getters}) {
             commit('setLoading', true)
-            await axios.get('/api/posts/')
+            const params = {params: {page: getters.page, posts_per_page: getters.itemsPerPage}}
+            await axios.get('/api/posts/', params)
                 .then(response => {
-                    commit('setPosts', response.data)
+                    commit('setTotalPosts', response.data.total_posts)
+                    commit('setPosts', response.data.posts)
                 })
                 .catch(error => {
                     console.log(error)
@@ -40,9 +54,12 @@ export default {
                 console.log(error)
             }
         },
-        async addPost({commit}, post) {
+        async addPost({commit, dispatch}, post) {
             const form = new URLSearchParams(post)
             await axios.post('/api/posts/', form)
+                .then(() => {
+                    dispatch("fetchPosts")
+                })
                 .catch(error => {
                     console.log(error)
                 })
@@ -79,23 +96,33 @@ export default {
         async updatePost({dispatch}, post) {
             const form = new URLSearchParams(post)
             await axios.put(`/api/posts/${post.id}`, form)
+                .then(() => {
+                    dispatch("fetchPosts")
+                })
                 .catch(error => {
                     console.log(error)
                 })
         }
     },
     getters: {
-        allPosts(state) {
+        posts(state) {
             return state.posts
-        },
-        postCount(state) {
-            return state.posts.length
         },
         isLoading(state) {
             return state.loading
         },
         selected(state) {
             return state.selected
+        },
+        page(state) {
+            return state.page
+        },
+        totalPosts(state) {
+            console.log("totalPosts: " + state.totalPosts)
+            return state.totalPosts
+        },
+        itemsPerPage(state) {
+            return state.itemsPerPage
         }
     }
 }

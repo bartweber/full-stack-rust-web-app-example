@@ -94,7 +94,6 @@ async function save() {
     } else {
       await store.dispatch('post/updatePost', formData.value)
     }
-    await store.dispatch('post/fetchPosts')
     await router.push({name: 'posts'})
   } else {
     console.log('invalid')
