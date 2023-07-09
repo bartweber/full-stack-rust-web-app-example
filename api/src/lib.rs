@@ -2,11 +2,9 @@ use actix_example_service::{
     sea_orm::{Database, DatabaseConnection},
     Mutation, Query,
 };
-use actix_web::{
-    get, middleware, post, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result,
-};
+use actix_web::{get, middleware, post, put, patch, delete, web, App, Error, HttpRequest, HttpResponse, HttpServer, Result};
 use actix_web_static_files::ResourceFiles;
-use std::str;
+use std::{str};
 
 use entity::post;
 use listenfd::ListenFd;
@@ -14,7 +12,7 @@ use migration::{Migrator, MigratorTrait};
 use serde::{Deserialize, Serialize};
 use std::env;
 
-const DEFAULT_POSTS_PER_PAGE: u64 = 5;
+const DEFAULT_POSTS_PER_PAGE: u64 = 99;
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
@@ -27,6 +25,13 @@ struct AppState {
 pub struct Params {
     page: Option<u64>,
     posts_per_page: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Patch {
+    op: String,
+    path: String,
+    value: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -49,36 +54,25 @@ async fn list(req: HttpRequest, data: web::Data<AppState>) -> Result<HttpRespons
         .await
         .expect("Cannot find posts in page");
 
-    let body = format!("{:?}", posts);
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
-}
-
-#[get("/api/posts/new")]
-async fn new(_data: web::Data<AppState>) -> Result<HttpResponse, Error> {
-    let body = "new post";
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::Ok().json(posts))
 }
 
 #[post("/api/posts/")]
-async fn create(
-    data: web::Data<AppState>,
-    post_form: web::Form<post::Model>,
-) -> Result<HttpResponse, Error> {
+async fn create(data: web::Data<AppState>, post_form: web::Form<post::Model>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
 
     let form = post_form.into_inner();
+    println!("{:?}", form);
 
     Mutation::create_post(conn, form)
         .await
         .expect("could not insert post");
 
-    Ok(HttpResponse::Found()
-        .append_header(("location", "/"))
-        .finish())
+    Ok(HttpResponse::Ok().finish())
 }
 
 #[get("/api/posts/{id}")]
-async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+async fn find(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let id = id.into_inner();
 
@@ -87,31 +81,27 @@ async fn edit(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRespo
         .expect("could not find post")
         .unwrap_or_else(|| panic!("could not find post with id {id}"));
 
-    let body = format!("{:?}", post);
-    Ok(HttpResponse::Ok().content_type("text/html").body(body))
+    Ok(HttpResponse::Ok().json(post))
 }
 
-#[post("/api/posts/{id}")]
-async fn update(
-    data: web::Data<AppState>,
-    id: web::Path<i32>,
-    post_form: web::Form<post::Model>,
-) -> Result<HttpResponse, Error> {
+#[put("/api/posts/{id}")]
+async fn update(data: web::Data<AppState>, id: web::Path<i32>, post_form: web::Form<post::Model>) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let form = post_form.into_inner();
     let id = id.into_inner();
 
-    Mutation::update_post_by_id(conn, id, form)
+    let updated_post = Mutation::update_post_by_id(conn, id, form)
         .await
         .expect("could not edit post");
 
-    Ok(HttpResponse::Found()
-        .append_header(("location", "/"))
-        .finish())
+    Ok(HttpResponse::Ok().json(updated_post))
 }
 
-#[post("/api/posts/delete/{id}")]
-async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpResponse, Error> {
+#[delete("/api/posts/{id}")]
+async fn delete(
+    data: web::Data<AppState>,
+    id: web::Path<i32>,
+) -> Result<HttpResponse, Error> {
     let conn = &data.conn;
     let id = id.into_inner();
 
@@ -119,9 +109,24 @@ async fn delete(data: web::Data<AppState>, id: web::Path<i32>) -> Result<HttpRes
         .await
         .expect("could not delete post");
 
-    Ok(HttpResponse::Found()
-        .append_header(("location", "/"))
-        .finish())
+    Ok(HttpResponse::Ok().finish())
+}
+
+#[patch("/api/posts/")]
+async fn patch(data: web::Data<AppState>, body: web::Json<Vec<Patch>>) -> Result<HttpResponse, Error> {
+    let conn = &data.conn;
+
+    let patch = body.into_inner();
+    for mutation in patch {
+        if mutation.op == "remove" {
+            let id = mutation.path.replace("/api/posts/", "").parse::<i32>().expect(format!("could not parse id: {}", mutation.path).as_str());
+            Mutation::delete_post(conn, id)
+                .await
+                .expect("could not delete post");
+        }
+    }
+
+    Ok(HttpResponse::Ok().finish())
 }
 
 async fn _not_found(_data: web::Data<AppState>, _request: HttpRequest) -> Result<HttpResponse, Error> {
@@ -172,11 +177,11 @@ async fn start() -> std::io::Result<()> {
 
 fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(list);
-    cfg.service(new);
     cfg.service(create);
-    cfg.service(edit);
+    cfg.service(find);
     cfg.service(update);
     cfg.service(delete);
+    cfg.service(patch);
 }
 
 pub fn main() {
